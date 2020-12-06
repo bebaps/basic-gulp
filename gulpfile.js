@@ -3,6 +3,7 @@ const { src, dest, series, parallel, watch } = require('gulp');
 const bs = require('browser-sync').create();
 const babel = require('gulp-babel');
 const sm = require('gulp-sourcemaps');
+const posthtml = require('gulp-posthtml');
 const postcss = require('gulp-postcss');
 const postcssEnv = require('postcss-preset-env');
 const cssnano = require('cssnano');
@@ -12,23 +13,25 @@ const imagemin = require('gulp-imagemin');
 const PATHS = {
   src: {
     root: 'src',
+    html: 'src/**/*.html',
     css: 'src/css/**/*.css',
     js: 'src/js/**/*.js',
     images: 'src/images/**/*',
     fonts: 'src/fonts/**/*'
   },
   public: {
-    root: 'src/public',
-    css: 'src/public/css',
-    js: 'src/public/js',
-    images: 'src/public/images',
-    fonts: 'src/public/fonts'
+    root: 'public',
+    html: 'public',
+    css: 'public/css',
+    js: 'public/js',
+    images: 'public/images',
+    fonts: 'public/fonts'
   }
 }
 const OPTIONS = {
   bs: {
     server: {
-      baseDir: PATHS.src.root
+      baseDir: PATHS.public.root,
     }
   },
   babel: {
@@ -53,14 +56,28 @@ const OPTIONS = {
 // -----------------------------------------------------------------------------
 function server() {
   bs.init(OPTIONS.bs);
-  watch(`${PATHS.src.root}/**/*.html`).on('change', bs.reload);
   watch(PATHS.src.fonts, fonts);
   watch(PATHS.src.images, images);
+  watch(PATHS.src.html, html);
   watch(PATHS.src.css, css);
   watch(PATHS.src.js, js);
+  watch(`${PATHS.public.html}/index.html`).on('change', bs.reload);
 }
 
 exports.server = server;
+
+// -----------------------------------------------------------------------------
+// HTML
+// -----------------------------------------------------------------------------
+function html() {
+  return src(PATHS.src.html).
+    pipe(posthtml([
+      require('posthtml-include')({root: PATHS.src.root})
+    ])).
+    pipe(dest(PATHS.public.html));
+}
+
+exports.html = html;
 
 // -----------------------------------------------------------------------------
 // CSS
@@ -131,5 +148,5 @@ exports.fonts = fonts;
 // -----------------------------------------------------------------------------
 // Defaults
 // -----------------------------------------------------------------------------
-exports.build = series(fonts, images, css, minifyCss, js, minifyJs);
-exports.default = series(fonts, images, css, js, server);
+exports.build = series(fonts, images, html, css, minifyCss, js, minifyJs);
+exports.default = series(fonts, images, html, css, js, server);
